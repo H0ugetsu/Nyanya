@@ -1,0 +1,27 @@
+{
+  "name": "nyanya",
+  "version": "1.0.0",
+  "description": "🐱 Nyanya Pomodoro Timer for Chrome extension",
+  "main": "index.js",
+  "scripts": {
+    "build": "vite build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/H0ugetsu/Nyanya.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/H0ugetsu/Nyanya/issues"
+  },
+  "homepage": "https://github.com/H0ugetsu/Nyanya#readme",
+  "devDependencies": {
+    "@crxjs/vite-plugin": "^2.7.1",
+    "@types/chrome": "^0.2.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.3"
+  }
+}
