@@ -31,6 +31,8 @@ export type TimerMessage =
     }
   | {
       type: "TEST_SOUND";
+      soundId: SoundId;
+      volume: number;
     };
 
 export const TIMER_STORAGE_KEY = "timerState";

@@ -8,6 +8,7 @@ import {
   TIMER_STORAGE_KEY,
   type SessionCountState,
   type SettingsState,
+  type SoundId,
   type TimerMessage,
   type TimerState,
 } from "../shared/types";
@@ -15,9 +16,9 @@ import {
 const PHASE_ALARM_NAME = "nyanya-phase-end";
 const BADGE_ALARM_NAME = "nyanya-badge-tick";
 
-const BADGE_COLOR_WORK = "#E63946";
-const BADGE_COLOR_BREAK = "#2A9D8F";
-const BADGE_COLOR_PAUSED = "#6C757D";
+const BADGE_COLOR_WORK = "#EDA44F";
+const BADGE_COLOR_BREAK = "#E6859D";
+const BADGE_COLOR_PAUSED = "#1C1C1E";
 
 async function getState(): Promise<TimerState> {
   const result = await chrome.storage.local.get(TIMER_STORAGE_KEY);
@@ -77,10 +78,14 @@ async function getSettings(): Promise<SettingsState> {
   return (result[SETTINGS_STORAGE_KEY] as SettingsState | undefined) ?? DEFAULT_SETTINGS;
 }
 
-async function playNotificationSound(): Promise<void> {
+async function playSoundNow(soundId: SoundId, volume: number): Promise<void> {
   await ensureOffscreenDocument();
+  await chrome.runtime.sendMessage({ type: "PLAY_SOUND", soundId, volume });
+}
+
+async function playNotificationSound(): Promise<void> {
   const settings = await getSettings();
-  await chrome.runtime.sendMessage({ type: "PLAY_SOUND", soundId: settings.soundId, volume: settings.volume });
+  await playSoundNow(settings.soundId, settings.volume);
 }
 
 async function showDesktopNotification(title: string, message: string): Promise<void> {
@@ -171,7 +176,7 @@ chrome.runtime.onMessage.addListener((message: TimerMessage, _sender, sendRespon
       resetTimer().then(() => sendResponse({ ok: true }));
       return true;
     case "TEST_SOUND":
-      playNotificationSound().then(() => sendResponse({ ok: true }));
+      playSoundNow(message.soundId, message.volume).then(() => sendResponse({ ok: true }));
       return true;
     default:
       return false;

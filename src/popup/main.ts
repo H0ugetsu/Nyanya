@@ -12,6 +12,8 @@ import {
   type TimerState,
 } from "../shared/types";
 
+const catStageEl = document.getElementById("catStage") as HTMLDivElement;
+const catEl = document.getElementById("cat") as HTMLSpanElement;
 const timerEl = document.getElementById("timer")!;
 const phaseEl = document.getElementById("phase")!;
 const sessionCountEl = document.getElementById("sessionCount")!;
@@ -22,10 +24,17 @@ const resetButton = document.getElementById("resetButton") as HTMLButtonElement;
 const soundSelect = document.getElementById("soundSelect") as HTMLSelectElement;
 const volumeRange = document.getElementById("volumeRange") as HTMLInputElement;
 const testSoundButton = document.getElementById("testSoundButton") as HTMLButtonElement;
+const mainViewEl = document.getElementById("mainView") as HTMLDivElement;
+const settingsPanelEl = document.getElementById("settingsPanel") as HTMLDivElement;
+const settingsButton = document.getElementById("settingsButton") as HTMLButtonElement;
+const settingsConfirmButton = document.getElementById("settingsConfirmButton") as HTMLButtonElement;
+const settingsCancelButton = document.getElementById("settingsCancelButton") as HTMLButtonElement;
 
 type PrimaryAction = "start" | "pause" | "resume";
 let primaryAction: PrimaryAction = "start";
 let intervalId: number | undefined;
+let previousPhase: TimerState["phase"] | null = null;
+let settingsSnapshot: SettingsState = DEFAULT_SETTINGS;
 
 function formatTime(ms: number): string {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
@@ -50,7 +59,30 @@ function updateButtons(state: TimerState): void {
   }
 }
 
+function renderCat(state: TimerState): void {
+  const justCompleted = previousPhase === "break" && state.phase === "idle";
+  previousPhase = state.phase;
+
+  catStageEl.classList.remove("work", "break", "stretch");
+
+  if (justCompleted) {
+    catStageEl.classList.add("stretch");
+    const onAnimationEnd = () => {
+      catStageEl.classList.remove("stretch");
+      catEl.removeEventListener("animationend", onAnimationEnd);
+    };
+    catEl.addEventListener("animationend", onAnimationEnd);
+  } else if (state.phase === "work") {
+    catStageEl.classList.add("work");
+  } else if (state.phase === "break") {
+    catStageEl.classList.add("break");
+  }
+
+  catEl.style.animationPlayState = state.isPaused ? "paused" : "running";
+}
+
 function render(state: TimerState): void {
+  renderCat(state);
   phaseEl.textContent = state.isPaused ? `${state.phase} (一時停止)` : state.phase;
   workInput.value = String(state.workMinutes);
   breakInput.value = String(state.breakMinutes);
@@ -120,12 +152,31 @@ resetButton.addEventListener("click", async () => {
   await loadState();
 });
 
-soundSelect.addEventListener("change", saveSettings);
-volumeRange.addEventListener("change", saveSettings);
-
 testSoundButton.addEventListener("click", async () => {
+  const message: TimerMessage = {
+    type: "TEST_SOUND",
+    soundId: soundSelect.value as SoundId,
+    volume: Number(volumeRange.value),
+  };
+  await chrome.runtime.sendMessage(message);
+});
+
+settingsButton.addEventListener("click", () => {
+  settingsSnapshot = { soundId: soundSelect.value as SoundId, volume: Number(volumeRange.value) };
+  mainViewEl.hidden = true;
+  settingsPanelEl.hidden = false;
+});
+
+settingsConfirmButton.addEventListener("click", async () => {
   await saveSettings();
-  await chrome.runtime.sendMessage({ type: "TEST_SOUND" } satisfies TimerMessage);
+  settingsPanelEl.hidden = true;
+  mainViewEl.hidden = false;
+});
+
+settingsCancelButton.addEventListener("click", () => {
+  renderSettings(settingsSnapshot);
+  settingsPanelEl.hidden = true;
+  mainViewEl.hidden = false;
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
