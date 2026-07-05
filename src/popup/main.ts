@@ -19,6 +19,8 @@ const phaseEl = document.getElementById("phase")!;
 const sessionCountEl = document.getElementById("sessionCount")!;
 const workInput = document.getElementById("workMinutes") as HTMLInputElement;
 const breakInput = document.getElementById("breakMinutes") as HTMLInputElement;
+const workMinutesValueEl = document.getElementById("workMinutesValue")!;
+const breakMinutesValueEl = document.getElementById("breakMinutesValue")!;
 const primaryButton = document.getElementById("primaryButton") as HTMLButtonElement;
 const resetButton = document.getElementById("resetButton") as HTMLButtonElement;
 const soundSelect = document.getElementById("soundSelect") as HTMLSelectElement;
@@ -86,6 +88,8 @@ function render(state: TimerState): void {
   phaseEl.textContent = state.isPaused ? `${state.phase} (一時停止)` : state.phase;
   workInput.value = String(state.workMinutes);
   breakInput.value = String(state.breakMinutes);
+  workMinutesValueEl.textContent = `${state.workMinutes}分`;
+  breakMinutesValueEl.textContent = `${state.breakMinutes}分`;
   workInput.disabled = state.phase !== "idle";
   breakInput.disabled = state.phase !== "idle";
 
@@ -134,6 +138,14 @@ async function saveSettings(): Promise<void> {
   };
   await chrome.storage.local.set({ [SETTINGS_STORAGE_KEY]: settings });
 }
+
+workInput.addEventListener("input", () => {
+  workMinutesValueEl.textContent = `${workInput.value}分`;
+});
+
+breakInput.addEventListener("input", () => {
+  breakMinutesValueEl.textContent = `${breakInput.value}分`;
+});
 
 primaryButton.addEventListener("click", async () => {
   const message: TimerMessage =
