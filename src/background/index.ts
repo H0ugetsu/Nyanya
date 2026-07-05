@@ -74,6 +74,15 @@ async function playNotificationSound(): Promise<void> {
   await chrome.runtime.sendMessage({ type: "PLAY_SOUND" });
 }
 
+async function showDesktopNotification(title: string, message: string): Promise<void> {
+  await chrome.notifications.create({
+    type: "basic",
+    iconUrl: chrome.runtime.getURL("icons/notification-128.png"),
+    title,
+    message,
+  });
+}
+
 async function startWork(workMinutes: number, breakMinutes: number): Promise<void> {
   const endTimestamp = Date.now() + workMinutes * 60 * 1000;
   const state: TimerState = {
@@ -176,6 +185,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     await updateBadge(nextState);
     await incrementSessionCount();
     await playNotificationSound();
+    await showDesktopNotification("作業終了!🐱", "休憩しましょう");
     return;
   }
 
@@ -185,6 +195,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     chrome.alarms.clear(BADGE_ALARM_NAME);
     await updateBadge(nextState);
     await playNotificationSound();
+    await showDesktopNotification("休憩終了!🐱", "作業を再開しましょう");
   }
 });
 
