@@ -38,3 +38,22 @@ export const DEFAULT_TIMER_STATE: TimerState = {
   isPaused: false,
   remainingMsAtPause: null,
 };
+
+export interface SessionCountState {
+  date: string;
+  count: number;
+}
+
+export const SESSION_STORAGE_KEY = "sessionCount";
+
+export function getLocalDateString(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function getTodaySessionCount(stored: SessionCountState | undefined): number {
+  if (!stored || stored.date !== getLocalDateString()) return 0;
+  return stored.count;
+}

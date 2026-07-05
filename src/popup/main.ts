@@ -1,7 +1,16 @@
-import { DEFAULT_TIMER_STATE, TIMER_STORAGE_KEY, type TimerMessage, type TimerState } from "../shared/types";
+import {
+  DEFAULT_TIMER_STATE,
+  getTodaySessionCount,
+  SESSION_STORAGE_KEY,
+  TIMER_STORAGE_KEY,
+  type SessionCountState,
+  type TimerMessage,
+  type TimerState,
+} from "../shared/types";
 
 const timerEl = document.getElementById("timer")!;
 const phaseEl = document.getElementById("phase")!;
+const sessionCountEl = document.getElementById("sessionCount")!;
 const workInput = document.getElementById("workMinutes") as HTMLInputElement;
 const breakInput = document.getElementById("breakMinutes") as HTMLInputElement;
 const primaryButton = document.getElementById("primaryButton") as HTMLButtonElement;
@@ -62,10 +71,15 @@ function render(state: TimerState): void {
   updateButtons(state);
 }
 
+function renderSessionCount(stored: SessionCountState | undefined): void {
+  sessionCountEl.textContent = `今日の完了セッション数: ${getTodaySessionCount(stored)}`;
+}
+
 async function loadState(): Promise<void> {
-  const result = await chrome.storage.local.get(TIMER_STORAGE_KEY);
+  const result = await chrome.storage.local.get([TIMER_STORAGE_KEY, SESSION_STORAGE_KEY]);
   const state = (result[TIMER_STORAGE_KEY] as TimerState | undefined) ?? DEFAULT_TIMER_STATE;
   render(state);
+  renderSessionCount(result[SESSION_STORAGE_KEY] as SessionCountState | undefined);
 }
 
 primaryButton.addEventListener("click", async () => {
@@ -86,8 +100,12 @@ resetButton.addEventListener("click", async () => {
 });
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "local" && changes[TIMER_STORAGE_KEY]) {
+  if (areaName !== "local") return;
+  if (changes[TIMER_STORAGE_KEY]) {
     render(changes[TIMER_STORAGE_KEY].newValue as TimerState);
+  }
+  if (changes[SESSION_STORAGE_KEY]) {
+    renderSessionCount(changes[SESSION_STORAGE_KEY].newValue as SessionCountState);
   }
 });
 

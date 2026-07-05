@@ -1,6 +1,10 @@
 import {
   DEFAULT_TIMER_STATE,
+  getLocalDateString,
+  getTodaySessionCount,
+  SESSION_STORAGE_KEY,
   TIMER_STORAGE_KEY,
+  type SessionCountState,
   type TimerMessage,
   type TimerState,
 } from "../shared/types";
@@ -40,6 +44,16 @@ async function updateBadge(state: TimerState): Promise<void> {
         ? BADGE_COLOR_WORK
         : BADGE_COLOR_BREAK,
   });
+}
+
+async function incrementSessionCount(): Promise<void> {
+  const result = await chrome.storage.local.get(SESSION_STORAGE_KEY);
+  const stored = result[SESSION_STORAGE_KEY] as SessionCountState | undefined;
+  const nextCount: SessionCountState = {
+    date: getLocalDateString(),
+    count: getTodaySessionCount(stored) + 1,
+  };
+  await chrome.storage.local.set({ [SESSION_STORAGE_KEY]: nextCount });
 }
 
 async function ensureOffscreenDocument(): Promise<void> {
@@ -160,6 +174,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     await setState(nextState);
     chrome.alarms.create(PHASE_ALARM_NAME, { when: endTimestamp });
     await updateBadge(nextState);
+    await incrementSessionCount();
     await playNotificationSound();
     return;
   }
