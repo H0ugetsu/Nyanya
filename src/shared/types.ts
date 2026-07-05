@@ -7,11 +7,15 @@ export interface TimerState {
   endTimestamp: number | null;
 }
 
-export type TimerMessage = {
-  type: "START";
-  workMinutes: number;
-  breakMinutes: number;
-};
+export type TimerMessage =
+  | {
+      type: "START";
+      workMinutes: number;
+      breakMinutes: number;
+    }
+  | {
+      type: "PLAY_SOUND";
+    };
 
 export const TIMER_STORAGE_KEY = "timerState";
 

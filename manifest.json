@@ -9,5 +9,5 @@
   "background": {
     "service_worker": "src/background/index.ts"
   },
-  "permissions": ["alarms", "storage"]
+  "permissions": ["alarms", "storage", "offscreen"]
 }

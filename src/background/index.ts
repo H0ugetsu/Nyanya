@@ -33,6 +33,24 @@ async function updateBadge(state: TimerState): Promise<void> {
   });
 }
 
+async function ensureOffscreenDocument(): Promise<void> {
+  const existingContexts = await chrome.runtime.getContexts({
+    contextTypes: [chrome.runtime.ContextType.OFFSCREEN_DOCUMENT],
+  });
+  if (existingContexts.length > 0) return;
+
+  await chrome.offscreen.createDocument({
+    url: "src/offscreen/index.html",
+    reasons: [chrome.offscreen.Reason.AUDIO_PLAYBACK],
+    justification: "Play a short notification sound when a Pomodoro phase ends",
+  });
+}
+
+async function playNotificationSound(): Promise<void> {
+  await ensureOffscreenDocument();
+  await chrome.runtime.sendMessage({ type: "PLAY_SOUND" });
+}
+
 async function startWork(workMinutes: number, breakMinutes: number): Promise<void> {
   const endTimestamp = Date.now() + workMinutes * 60 * 1000;
   const state: TimerState = { phase: "work", workMinutes, breakMinutes, endTimestamp };
@@ -66,6 +84,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     await setState(nextState);
     chrome.alarms.create(PHASE_ALARM_NAME, { when: endTimestamp });
     await updateBadge(nextState);
+    await playNotificationSound();
     return;
   }
 
@@ -74,6 +93,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
     await setState(nextState);
     chrome.alarms.clear(BADGE_ALARM_NAME);
     await updateBadge(nextState);
+    await playNotificationSound();
   }
 });
 
