@@ -10,6 +10,7 @@ const BADGE_ALARM_NAME = "nyanya-badge-tick";
 
 const BADGE_COLOR_WORK = "#E63946";
 const BADGE_COLOR_BREAK = "#2A9D8F";
+const BADGE_COLOR_PAUSED = "#6C757D";
 
 async function getState(): Promise<TimerState> {
   const result = await chrome.storage.local.get(TIMER_STORAGE_KEY);
@@ -21,15 +22,23 @@ async function setState(state: TimerState): Promise<void> {
 }
 
 async function updateBadge(state: TimerState): Promise<void> {
-  if (state.phase === "idle" || state.endTimestamp === null) {
+  if (state.phase === "idle") {
     await chrome.action.setBadgeText({ text: "" });
     return;
   }
 
-  const remainingMinutes = Math.max(0, Math.ceil((state.endTimestamp - Date.now()) / 60000));
+  const remainingMs = state.isPaused
+    ? (state.remainingMsAtPause ?? 0)
+    : Math.max(0, (state.endTimestamp ?? Date.now()) - Date.now());
+  const remainingMinutes = Math.max(0, Math.ceil(remainingMs / 60000));
+
   await chrome.action.setBadgeText({ text: String(remainingMinutes) });
   await chrome.action.setBadgeBackgroundColor({
-    color: state.phase === "work" ? BADGE_COLOR_WORK : BADGE_COLOR_BREAK,
+    color: state.isPaused
+      ? BADGE_COLOR_PAUSED
+      : state.phase === "work"
+        ? BADGE_COLOR_WORK
+        : BADGE_COLOR_BREAK,
   });
 }
 
@@ -53,19 +62,85 @@ async function playNotificationSound(): Promise<void> {
 
 async function startWork(workMinutes: number, breakMinutes: number): Promise<void> {
   const endTimestamp = Date.now() + workMinutes * 60 * 1000;
-  const state: TimerState = { phase: "work", workMinutes, breakMinutes, endTimestamp };
+  const state: TimerState = {
+    phase: "work",
+    workMinutes,
+    breakMinutes,
+    endTimestamp,
+    isPaused: false,
+    remainingMsAtPause: null,
+  };
   await setState(state);
   chrome.alarms.create(PHASE_ALARM_NAME, { when: endTimestamp });
   chrome.alarms.create(BADGE_ALARM_NAME, { periodInMinutes: 1 });
   await updateBadge(state);
 }
 
+async function pauseTimer(): Promise<void> {
+  const state = await getState();
+  if (state.phase === "idle" || state.isPaused || state.endTimestamp === null) return;
+
+  const remainingMsAtPause = Math.max(0, state.endTimestamp - Date.now());
+  const nextState: TimerState = {
+    ...state,
+    isPaused: true,
+    endTimestamp: null,
+    remainingMsAtPause,
+  };
+  await setState(nextState);
+  chrome.alarms.clear(PHASE_ALARM_NAME);
+  await updateBadge(nextState);
+}
+
+async function resumeTimer(): Promise<void> {
+  const state = await getState();
+  if (state.phase === "idle" || !state.isPaused || state.remainingMsAtPause === null) return;
+
+  const endTimestamp = Date.now() + state.remainingMsAtPause;
+  const nextState: TimerState = {
+    ...state,
+    isPaused: false,
+    endTimestamp,
+    remainingMsAtPause: null,
+  };
+  await setState(nextState);
+  chrome.alarms.create(PHASE_ALARM_NAME, { when: endTimestamp });
+  chrome.alarms.create(BADGE_ALARM_NAME, { periodInMinutes: 1 });
+  await updateBadge(nextState);
+}
+
+async function resetTimer(): Promise<void> {
+  const state = await getState();
+  const nextState: TimerState = {
+    ...state,
+    phase: "idle",
+    endTimestamp: null,
+    isPaused: false,
+    remainingMsAtPause: null,
+  };
+  await setState(nextState);
+  chrome.alarms.clear(PHASE_ALARM_NAME);
+  chrome.alarms.clear(BADGE_ALARM_NAME);
+  await updateBadge(nextState);
+}
+
 chrome.runtime.onMessage.addListener((message: TimerMessage, _sender, sendResponse) => {
-  if (message.type === "START") {
-    startWork(message.workMinutes, message.breakMinutes).then(() => sendResponse({ ok: true }));
-    return true;
+  switch (message.type) {
+    case "START":
+      startWork(message.workMinutes, message.breakMinutes).then(() => sendResponse({ ok: true }));
+      return true;
+    case "PAUSE":
+      pauseTimer().then(() => sendResponse({ ok: true }));
+      return true;
+    case "RESUME":
+      resumeTimer().then(() => sendResponse({ ok: true }));
+      return true;
+    case "RESET":
+      resetTimer().then(() => sendResponse({ ok: true }));
+      return true;
+    default:
+      return false;
   }
-  return false;
 });
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
@@ -77,6 +152,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name !== PHASE_ALARM_NAME) return;
 
   const state = await getState();
+  if (state.isPaused) return;
 
   if (state.phase === "work") {
     const endTimestamp = Date.now() + state.breakMinutes * 60 * 1000;

@@ -31,9 +31,17 @@
         box-sizing: border-box;
         margin-top: 2px;
       }
-      button {
-        width: 100%;
+      input:disabled {
+        background: #eee;
+        color: #999;
+      }
+      .buttons {
+        display: flex;
+        gap: 6px;
         margin-top: 12px;
+      }
+      button {
+        flex: 1;
         padding: 6px;
       }
     </style>
@@ -49,7 +57,10 @@
       休憩時間(分)
       <input type="number" id="breakMinutes" min="1" value="5" />
     </label>
-    <button id="startButton">開始</button>
+    <div class="buttons">
+      <button id="primaryButton">開始</button>
+      <button id="resetButton" hidden>リセット</button>
+    </div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>
