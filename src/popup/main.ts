@@ -1,9 +1,13 @@
 import {
+  DEFAULT_SETTINGS,
   DEFAULT_TIMER_STATE,
   getTodaySessionCount,
   SESSION_STORAGE_KEY,
+  SETTINGS_STORAGE_KEY,
   TIMER_STORAGE_KEY,
   type SessionCountState,
+  type SettingsState,
+  type SoundId,
   type TimerMessage,
   type TimerState,
 } from "../shared/types";
@@ -15,6 +19,9 @@ const workInput = document.getElementById("workMinutes") as HTMLInputElement;
 const breakInput = document.getElementById("breakMinutes") as HTMLInputElement;
 const primaryButton = document.getElementById("primaryButton") as HTMLButtonElement;
 const resetButton = document.getElementById("resetButton") as HTMLButtonElement;
+const soundSelect = document.getElementById("soundSelect") as HTMLSelectElement;
+const volumeRange = document.getElementById("volumeRange") as HTMLInputElement;
+const testSoundButton = document.getElementById("testSoundButton") as HTMLButtonElement;
 
 type PrimaryAction = "start" | "pause" | "resume";
 let primaryAction: PrimaryAction = "start";
@@ -75,11 +82,25 @@ function renderSessionCount(stored: SessionCountState | undefined): void {
   sessionCountEl.textContent = `今日の完了セッション数: ${getTodaySessionCount(stored)}`;
 }
 
+function renderSettings(settings: SettingsState): void {
+  soundSelect.value = settings.soundId;
+  volumeRange.value = String(settings.volume);
+}
+
 async function loadState(): Promise<void> {
-  const result = await chrome.storage.local.get([TIMER_STORAGE_KEY, SESSION_STORAGE_KEY]);
+  const result = await chrome.storage.local.get([TIMER_STORAGE_KEY, SESSION_STORAGE_KEY, SETTINGS_STORAGE_KEY]);
   const state = (result[TIMER_STORAGE_KEY] as TimerState | undefined) ?? DEFAULT_TIMER_STATE;
   render(state);
   renderSessionCount(result[SESSION_STORAGE_KEY] as SessionCountState | undefined);
+  renderSettings((result[SETTINGS_STORAGE_KEY] as SettingsState | undefined) ?? DEFAULT_SETTINGS);
+}
+
+async function saveSettings(): Promise<void> {
+  const settings: SettingsState = {
+    soundId: soundSelect.value as SoundId,
+    volume: Number(volumeRange.value),
+  };
+  await chrome.storage.local.set({ [SETTINGS_STORAGE_KEY]: settings });
 }
 
 primaryButton.addEventListener("click", async () => {
@@ -99,6 +120,14 @@ resetButton.addEventListener("click", async () => {
   await loadState();
 });
 
+soundSelect.addEventListener("change", saveSettings);
+volumeRange.addEventListener("change", saveSettings);
+
+testSoundButton.addEventListener("click", async () => {
+  await saveSettings();
+  await chrome.runtime.sendMessage({ type: "TEST_SOUND" } satisfies TimerMessage);
+});
+
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (areaName !== "local") return;
   if (changes[TIMER_STORAGE_KEY]) {
@@ -106,6 +135,9 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
   if (changes[SESSION_STORAGE_KEY]) {
     renderSessionCount(changes[SESSION_STORAGE_KEY].newValue as SessionCountState);
+  }
+  if (changes[SETTINGS_STORAGE_KEY]) {
+    renderSettings(changes[SETTINGS_STORAGE_KEY].newValue as SettingsState);
   }
 });
 

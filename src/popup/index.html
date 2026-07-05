@@ -50,6 +50,22 @@
         color: #666;
         margin-top: 12px;
       }
+      select {
+        width: 100%;
+        box-sizing: border-box;
+        margin-top: 2px;
+      }
+      .settings {
+        margin-top: 12px;
+        padding-top: 8px;
+        border-top: 1px solid #ddd;
+      }
+      .test-button {
+        width: 100%;
+        margin-top: 6px;
+        padding: 4px;
+        font-size: 12px;
+      }
     </style>
   </head>
   <body>
@@ -68,6 +84,21 @@
       <button id="resetButton" hidden>リセット</button>
     </div>
     <div class="session-count" id="sessionCount">今日の完了セッション数: 0</div>
+    <div class="settings">
+      <label>
+        通知音
+        <select id="soundSelect">
+          <option value="bell">ベル</option>
+          <option value="chime">チャイム</option>
+          <option value="pop">ポップ</option>
+        </select>
+      </label>
+      <label>
+        音量
+        <input type="range" id="volumeRange" min="0" max="100" value="70" />
+      </label>
+      <button class="test-button" id="testSoundButton">試聴</button>
+    </div>
     <script type="module" src="./main.ts"></script>
   </body>
 </html>

@@ -26,6 +26,11 @@ export type TimerMessage =
     }
   | {
       type: "PLAY_SOUND";
+      soundId: SoundId;
+      volume: number;
+    }
+  | {
+      type: "TEST_SOUND";
     };
 
 export const TIMER_STORAGE_KEY = "timerState";
@@ -57,3 +62,17 @@ export function getTodaySessionCount(stored: SessionCountState | undefined): num
   if (!stored || stored.date !== getLocalDateString()) return 0;
   return stored.count;
 }
+
+export type SoundId = "bell" | "chime" | "pop";
+
+export interface SettingsState {
+  soundId: SoundId;
+  volume: number;
+}
+
+export const SETTINGS_STORAGE_KEY = "settings";
+
+export const DEFAULT_SETTINGS: SettingsState = {
+  soundId: "bell",
+  volume: 70,
+};

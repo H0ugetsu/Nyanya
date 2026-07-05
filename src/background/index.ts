@@ -1,10 +1,13 @@
 import {
+  DEFAULT_SETTINGS,
   DEFAULT_TIMER_STATE,
   getLocalDateString,
   getTodaySessionCount,
   SESSION_STORAGE_KEY,
+  SETTINGS_STORAGE_KEY,
   TIMER_STORAGE_KEY,
   type SessionCountState,
+  type SettingsState,
   type TimerMessage,
   type TimerState,
 } from "../shared/types";
@@ -69,9 +72,15 @@ async function ensureOffscreenDocument(): Promise<void> {
   });
 }
 
+async function getSettings(): Promise<SettingsState> {
+  const result = await chrome.storage.local.get(SETTINGS_STORAGE_KEY);
+  return (result[SETTINGS_STORAGE_KEY] as SettingsState | undefined) ?? DEFAULT_SETTINGS;
+}
+
 async function playNotificationSound(): Promise<void> {
   await ensureOffscreenDocument();
-  await chrome.runtime.sendMessage({ type: "PLAY_SOUND" });
+  const settings = await getSettings();
+  await chrome.runtime.sendMessage({ type: "PLAY_SOUND", soundId: settings.soundId, volume: settings.volume });
 }
 
 async function showDesktopNotification(title: string, message: string): Promise<void> {
@@ -160,6 +169,9 @@ chrome.runtime.onMessage.addListener((message: TimerMessage, _sender, sendRespon
       return true;
     case "RESET":
       resetTimer().then(() => sendResponse({ ok: true }));
+      return true;
+    case "TEST_SOUND":
+      playNotificationSound().then(() => sendResponse({ ok: true }));
       return true;
     default:
       return false;
